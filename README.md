@@ -9,12 +9,13 @@
 ## Install Pacakges 
 
 * Main Pacakges used in this repo:
- - torch
- - torch-geometric
- - torch-scatter
- - ase
- - rdkit
-
+```
+  torch
+  torch-geometric
+  torch-scatter
+  ase
+  rdkit
+```
 
 * Installation using pip:
 
@@ -87,11 +88,14 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node
 --wandb --api_key [YOUR API KEY IN WANDB]
 ```
 
-* Test using a single gpu
+Notes:
+- The above setting is a good start for a fair performance on MD22
+- --nproc_per_node=4 must equal to the number of CUDA_VISIBLE_DEVICES
+- --otfcutoff must equal to short_cutoff_upper, this is the radius for short-range graph
+- --wandb toggle on wandb, just input your api key
+- You can specify a unique id for each dataset in [DATASET_ID]. This is mainly used when comparing different fragmentation scheme under the same molecules.
 
-The evaluation metrics includes: 
-- MAE for force
-- MAE for energy
+* Test using a single gpu
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 run_ddp.py \
@@ -102,11 +106,9 @@ CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --m
 --test --restore_run [PATH_TO_TRAINED_MODEL] \
 --wandb --api_key [YOUR API KEY IN WANDB]
 ```
+The evaluation metrics includes: 
+- MAE for force
+- MAE for energy
 
-Notes:
-- The above setting is a good start for a fair performance on MD22
-- --nproc_per_node=4 must equal to the number of CUDA_VISIBLE_DEVICES
-- --otfcutoff must equal to short_cutoff_upper, this is the radius for short-range graph
-- --wandb toggle on wandb, just input your api key
-- You can specify a unique id for each dataset in [DATASET_ID]. This is mainly used when comparing different fragmentation scheme under the same molecules.
+
 
