@@ -10,6 +10,8 @@ For fragments assignments, supported methods include rdkit[BRICS], kmeans, spect
 For molecule, Ac_Ala3_NHMe, DHA, stachyose, AT_AT, AT_AT_CG_CG, double_walled_nanotube, buckyball_catcher are supported.
 
 * Single GPU Version
+
+
 ```bash
 CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 run_ddp.py \
 --datapath [YOUR_DATA_PATH] \
