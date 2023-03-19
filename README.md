@@ -2,7 +2,16 @@
 # Long-Short-Range Message-Passing: A Physics-Informed Framework to Capture Non-Local Interaction for Scalable Molecular Dynamics Simulation
 
 * ICML 2023 Submission 4999 Authors
+
 * This repository is a comprehensive code base which implements Long-Short-Range Message-Passing as well as a spectrum of state-of-the-art models for molecular dynamics simulation
+
+* This code base is designed and optimized for Multi-GPU training
+
+  
+
+## Illustration of LSR-MP
+
+![image-20230319125927129](./plots/LSR-MP.png)
 
 
 
@@ -61,11 +70,21 @@ Supported Molecules:
 * double_walled_nanotube 
 * buckyball_catcher 
 
-See supported arguments:
+Currently Supported Models:
+
+* Visnorm_shared_LSRMNorm2_2branchSerial (VisNet-LSRM)
+* TorchMD_ET (Equivariant Transformer)
+* PaiNN
+
+See  arguments:
 
 ```bash
 python run_ddp.py -h
 ```
+
+
+
+
 
 ### Run LSRM on a Single GPU 
 
