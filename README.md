@@ -6,6 +6,25 @@
 
 
 
+## BRICS Algorithm Introduction
+
+The Breaking of Retrosynthetically Interesting Chemical Substructures (BRICS) method is one of the most widely employed strategies in the communities of quantum chemistry, chemical retrosynthesis, and drug discovery. We summarize the key points of BRICS as follows:
+
+   * A compound is first dissected into multiple substructures at predefined 16 types of bonds that are selected by organic chemists. In addition, BRICS also takes into account the chemical environment near the bonds, e.g. the types of atoms, to make sure that the size of each fragment is reasonable and the characteristics of the compounds are  kept as much as possible.
+   * BRICS method then applies substructure filters to remove extremely small fragments (for example a single atoms), duplicate fragments, and fragments with overlaps.
+    *  Finally, BRICS concludes the fragmentation procedure by adding supplementary atoms (mostly hydrogen atoms) to the fragments at the bond-breaking points and makes them chemically stable. 
+          \end{enumerate}
+
+We included a peudocode and a visual representation of the BRICS algorithm as follows:
+
+<img src="./plots/supplementary-fig.png"  />
+
+
+
+<img src="./plots/BRICS_algorithm.png"  />
+
+
+
 ## Install Pacakges 
 
 * Main Pacakges used in this repo:
@@ -22,6 +41,8 @@
 ```bash
 pip install -r requirements.txt
 ```
+
+
 
 ## Run Model
 
