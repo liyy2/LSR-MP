@@ -24,7 +24,7 @@ The Breaking of Retrosynthetically Interesting Chemical Substructures (BRICS) me
     *  Finally, BRICS concludes the fragmentation procedure by adding supplementary atoms (mostly hydrogen atoms) to the fragments at the bond-breaking points and makes them chemically stable. 
           \end{enumerate}
 
-We included a peudocode and a visual representation of the BRICS algorithm as follows:
+We includeda visual representation and peudocode of the BRICS algorithm as follows:
 
 <img src="./plots/supplementary-fig.png"  />
 
