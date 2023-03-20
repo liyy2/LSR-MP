@@ -44,6 +44,19 @@ We included a visual representation and peudocode of the BRICS algorithm as foll
   rdkit
 ```
 
+* Make a new conda environments:
+
+```bash
+conda create -n LSR-MP
+```
+
+
+* Activate the new conda environments:
+
+```bash
+conda activate LSR-MP
+```
+
 * Installation using pip:
 
 ```bash
