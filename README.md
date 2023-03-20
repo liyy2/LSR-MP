@@ -1,5 +1,5 @@
 
-# Long-Short-Range Message-Passing: A Physics-Informed Framework to Capture Non-Local Interaction for Scalable Molecular Dynamics Simulation
+# Long-Short-Range Message-Passing
 
 * ICML 2023 Submission 4999 Authors
 
