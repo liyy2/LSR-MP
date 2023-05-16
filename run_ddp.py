@@ -10,11 +10,11 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import json
 from lightnp.data.datasets.qm9 import get_statistics
-from lightnp.LSTM.utils.transforms import *
-from lightnp.LSTM.data import collate_fn, LmdbDataset
+from lightnp.LSRM.utils.transforms import *
+from lightnp.LSRM.data import collate_fn, LmdbDataset
 from torch.utils.data import DataLoader
-from lightnp.LSTM.models.torchmdnet.models.model import create_model
-from lightnp.LSTM.models.lsrm_modules import Visnorm_shared_LSRMNorm2_2branchSerial
+from lightnp.LSRM.models.torchmdnet.models.model import create_model
+from lightnp.LSRM.models.lsrm_modules import Visnorm_shared_LSRMNorm2_2branchSerial
 import lightnp as ltnp
 from lightnp.utils.ltnp_utils import Logger_Lin
 import argparse

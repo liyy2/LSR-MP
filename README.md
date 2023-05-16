@@ -60,7 +60,8 @@ conda activate LSR-MP
 * Installation using pip:
 
 ```bash
-pip install -r requirements.txt
+chmod +X build_env.sh
+./buil_env.sh
 ```
 
 
@@ -87,13 +88,6 @@ Currently Supported Models:
 * Visnorm_shared_LSRMNorm2_2branchSerial (VisNet-LSRM)
 * TorchMD_ET (Equivariant Transformer)
 * PaiNN
-
-See  arguments:
-
-```bash
-python run_ddp.py -h
-```
-
 
 
 
