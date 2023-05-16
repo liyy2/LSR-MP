@@ -1,7 +1,7 @@
 
 # Long-Short-Range Message-Passing
 
-* ICML 2023 Submission 4999 Authors
+* NIPS 2023 Submission 6195 Authors
 
 * This repository is a comprehensive code base which implements Long-Short-Range Message-Passing as well as a spectrum of state-of-the-art models for molecular dynamics simulation
 
