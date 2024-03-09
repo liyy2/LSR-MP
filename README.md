@@ -1,5 +1,5 @@
 
-# Long-Short-Range Message-Passing
+# [ICLR 2024] Long-Short-Range Message-Passing
 
 
 * This repository is a comprehensive code base that implements Long-Short-Range Message-Passing as well as a spectrum of state-of-the-art models for molecular dynamics simulation
