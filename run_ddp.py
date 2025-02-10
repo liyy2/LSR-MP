@@ -55,30 +55,34 @@ def parse_args(jupyter=False):
     parser.add_argument('--calculate_meanstd', action='store_true', default=False, help='calculate mean and std of the dataset, must toggle on')
     parser.add_argument('--group_builder', type=str, default='kmeans', choices=['rdkit', 'kmeans','spectral','spectral_two'], help='which group builder to use, BRICS method is rdkit')
     ######################## Model ########################
-    parser.add_argument('--model', type=str, default="TorchMD_Norm", help='model name, supported [TorchMD_Norm, LSRMNorm2_2branchSerial, PaiNN, TorchMD_ET]')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch size')
-    parser.add_argument('--num_interactions', type=int, default=6, help='number of [short-range] layers')
-    parser.add_argument('--long_num_layers', type=int, default=3, help='number of long-range layers')
-    parser.add_argument('--adaptive_cutoff', action = 'store_true', default=False, help='deprecated')
-    parser.add_argument('--short_cutoff_lower', type=float, default=0.0, help = 'lower bound of the short-range MP')
-    parser.add_argument('--short_cutoff_upper', type=float, default=8.0, help = 'upper bound of the short-range MP')
-    parser.add_argument('--long_cutoff_lower', type=float, default=0.0, help = 'lower bound of the long-range MP')
-    parser.add_argument('--long_cutoff_upper', type=float, default=9.0, help = 'upper bound of the long-range MP')
-    parser.add_argument('--otfcutoff', type=float, default=5.0, help = 'cutoff for on the fly graph construction, must be the same with short_cutoff_upper')
-    parser.add_argument('--group_center', type=str, default='center_of_mass', help = 'group center, supported [center_of_mass]')
-    parser.add_argument('--hidden_channels', type=int, default=128, help='hidden channels')
+    parser.add_argument('--model', type=str, default="TorchMD_Norm")
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--num_interactions', type=int, default=6)
+    parser.add_argument('--long_num_layers', type=int, default=3)
+    parser.add_argument('--adaptive_cutoff', action = 'store_true', default=False)
+    parser.add_argument('--short_cutoff_lower', type=float, default=0.0)
+    parser.add_argument('--short_cutoff_upper', type=float, default=8.0)
+    parser.add_argument('--long_cutoff_lower', type=float, default=0.0)
+    parser.add_argument('--long_cutoff_upper', type=float, default=9.0)
+    parser.add_argument('--otfcutoff', type=float, default=5.0)
+    parser.add_argument('--group_center', type=str, default='center_of_mass')
+    parser.add_argument('--hidden_channels', type=int, default=128)
     parser.add_argument('--not_otf_graph', action='store_true', default = False, 
                         help = 'on the fly graph construction, only for TorchMD_Norm')
-    parser.add_argument('--no_broadcast', action='store_true', default=False, help='must toggle on when you use LSRM models')
+    parser.add_argument('--no_broadcast', action='store_true', default=False)
+    parser.add_argument('--num_rbf', type=int, default=50)
     ######################## Optimizer ########################
-    parser.add_argument('--learning_rate', type=float, default=1e-3)
+    # parser.add_argument('--learning_rate', type=float, default=1e-3)
     parser.add_argument('--ema_decay', type=float, default=0.999)
     parser.add_argument('--lr_patience', type=int, default=30)
     parser.add_argument('--fp16', default=False, action='store_true')
-    parser.add_argument('--gradient_clip', default=False, action='store_true')
+    # parser.add_argument('--gradient_clip', default=False, action='store_true')
     # parser.add_argument('--AMSGrad', default=False, action='store_true')
-    parser.add_argument('--warmup_steps', type = int, default = 1000)
+    # parser.add_argument('--warmup_steps', type = int, default = 1000)
     parser.add_argument('--test_interval', type= int, default = 600)
+    parser.add_argument('--loss', type=str, default="MSE", choices=["MSE", "L2MAE"])
+    parser.add_argument('--lr_std',  type=int, default=0,
+                        help='whether to use learning rate diveded by std (default: 0)')
     
     ######################## Training ########################
     parser.add_argument('--not_regress_forces', action='store_true', default=False, help='whether to use forces in training')
@@ -87,17 +91,60 @@ def parse_args(jupyter=False):
     parser.add_argument('--early_stop', action='store_true', default=False, help='early stopping, default patience is 30')
     parser.add_argument('--early_stop_patience', type=int, default=500, help='early stopping, default patience is 30')
     parser.add_argument('--max_epochs', type=int, default=10000)
-    parser.add_argument('--rho_tradeoff', type=float, default=.01)
+    parser.add_argument('--energy_weight', type=float, default=0.2)
+    parser.add_argument('--force_weight', type=float, default=0.8)
     parser.add_argument('--rho_criteria', type=float, default=.1)
-    parser.add_argument('--sample_size', type=int, default=-1, help = 'sample size[i.e. training + validation], choose -1 to align with our experimental settings')
+    parser.add_argument('--sample_size', type=int, default=-1)
     parser.add_argument('--train_prop', type=float, default=0.95)
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--debug', action='store_true', default=False)
-
     parser.add_argument('--num_workers', type=int, default=24) ## gpu device count
     parser.add_argument('--local_rank', type=int, default=0) ## gpu device countpu device count
     parser.add_argument('--master_port', type=str, default="0000") ## gpu device countpu device count
-
+    ######################## Optimizer ########################
+    parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
+                        help='Optimizer (default: "adamw"')
+    parser.add_argument('--opt-eps', default=1e-8, type=float, metavar='EPSILON',
+                        help='Optimizer Epsilon (default: 1e-8)')
+    parser.add_argument('--opt-betas', default=None, type=float, nargs='+', metavar='BETA',
+                        help='Optimizer Betas (default: None, use opt default)')
+    parser.add_argument('--clip-grad', type=float, default=None, metavar='NORM',
+                        help='Clip gradient norm (default: None, no clipping)')
+    parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
+                        help='SGD momentum (default: 0.9)')
+    parser.add_argument('--weight-decay', type=float, default=5e-3,
+                        help='weight decay (default: 5e-3)')
+    # learning rate schedule parameters (timm)
+    ######################## Schedulers ########################
+    parser.add_argument('--sched', default='cosine', type=str, metavar='SCHEDULER',
+                        help='LR scheduler (default: "cosine")')
+    parser.add_argument('--lr', type=float, default=5e-4, metavar='LR',
+                        help='learning rate (default: 5e-4)')
+    parser.add_argument('--lr-noise', type=float, nargs='+', default=None, metavar='pct, pct',
+                        help='learning rate noise on/off epoch percentages')
+    parser.add_argument('--lr-noise-pct', type=float, default=0.67, metavar='PERCENT',
+                        help='learning rate noise limit percent (default: 0.67)')
+    parser.add_argument('--lr-noise-std', type=float, default=1.0, metavar='STDDEV',
+                        help='learning rate noise std-dev (default: 1.0)')
+    parser.add_argument('--warmup-lr', type=float, default=1e-6, metavar='LR',
+                        help='warmup learning rate (default: 1e-6)')
+    parser.add_argument('--min-lr', type=float, default=1e-6, metavar='LR',
+                        help='lower lr bound for cyclic schedulers that hit 0 (1e-6)')
+    parser.add_argument('--epochs', type=int, default=2500, metavar='EPOCHS',
+                        help='lower lr bound for cyclic schedulers that hit 0 (1e-6)')
+    parser.add_argument('--decay-epochs', type=float, default=30, metavar='N',
+                        help='epoch interval to decay LR')
+    parser.add_argument('--warmup-epochs', type=int, default=10, metavar='N',
+                        help='epochs to warmup LR, if scheduler supports')
+    parser.add_argument('--cooldown-epochs', type=int, default=10, metavar='N',
+                        help='epochs to cooldown LR at min_lr, after cyclic schedule ends')
+    parser.add_argument('--patience-epochs', type=int, default=10, metavar='N',
+                        help='patience epochs for Plateau LR scheduler -default: 10')
+    parser.add_argument('--decay-rate', '--dr', type=float, default=0.1, metavar='RATE',
+                        help='LR decay rate (default: 0.1)')
+    parser.add_argument('--denoise', '--dn', type=int, default=0, metavar='DN',
+                        help='Noisy node training')
+    parser.add_argument('--noise-levels', '--nl', type=float, default=0.1, metavar='NL')
     ######################## Logging ########################
     parser.add_argument('--wandb', action='store_true', default=False) ## gpu device count
     parser.add_argument('--restore_run', type=str, default=None, help="restore run, timestamp_config['model']")
@@ -107,6 +154,7 @@ def parse_args(jupyter=False):
     parser.add_argument('--tags', type=str, default=None, help='tags of the experiment')
     parser.add_argument('--group', type=str, default=None, help='project name of the experiment')
     parser.add_argument('--api_key', type=str, default=None, help='wandb api key')
+    parser.add_argument('--one_label', type = int, default=0, help='one label for all the data')
     
 
 
@@ -125,7 +173,9 @@ def parse_args(jupyter=False):
         if key.startswith('not_'):
             config[key[4:]] = not value
         config[key] = value
-    return config
+    
+    print(config)
+    return config, args
 
 def prepare_dataset(config):
     if os.path.exists(os.path.join(config['datapath'], f'MD22/{config["molecule"]}', config['dataset'])):
@@ -244,7 +294,7 @@ def get_dataset(config):
     
     return dataset, unit
 
-def main(world_size, config):
+def main(world_size, config, args):
     print("config['master_port'] = {}, os.environ['MASTER_PORT'] = {}".format(config['master_port'],os.environ['MASTER_PORT']))
     if config["amlt"]:
         config["master_port"] = os.environ['MASTER_PORT']
@@ -285,13 +335,6 @@ def main(world_size, config):
     
     if config['no_broadcast']:
             dataset.transforms = [convert_to_neighbor(r = config['otfcutoff']), reconstruct_group_with_threshold()]
-        
-    # num_nodes = 0
-    # num_edges = 0
-    # for i in range(len(dataset)):
-    #     num_nodes += dataset[i].atomic_numbers.shape[0]
-    #     num_edges += dataset[i].interaction_graph.shape[1]
-    # print("density of edges: ", num_edges/num_nodes)
 
     train_set, val_set, test_set = torch.utils.data.random_split(dataset, [
                                                                             int(config['sample_size']* config['train_prop']),
@@ -312,23 +355,17 @@ def main(world_size, config):
     val_loader = DataLoader(val_set, batch_size=config['batch_size']//2, collate_fn = collate_fn(unit = unit, with_force = regress_forces), shuffle=False,num_workers = config['num_workers'], sampler=valid_sampler)
     test_loader = DataLoader(test_set, batch_size=config['batch_size']//2, collate_fn = collate_fn(unit = unit, with_force = regress_forces), shuffle=False,num_workers = config['num_workers'], sampler=test_sampler)
     mean, std, atomref, config = get_stats(config, unit, train_set)
+    # if config["lr_std"]:
+    config["mean"] = mean.item()
+    config["std"] = std.item()
+    # config["lr"] = config["lr"]/std.item()
+    # args.lr = args.lr/std.item()
+    config['atomref'] = atomref.cuda() if atomref is not None else None
         
     model = get_model(config,mean,std,regress_forces,atomref)
-
-
-
     properties = ['energy', 'forces'] if regress_forces else ['energy'] # diff_U0_group, group_energy
 
-    # cp_hook = Checkpoints_Hook()
-    warmup = ltnp.train.LRWarmupHook(config['learning_rate']/config['warmup_steps'], config['learning_rate'], warmup_steps=config['warmup_steps'])
-    schedule = ltnp.train.ReduceLROnPlateauHook(
-            patience=config['lr_patience'],
-            factor=0.8,
-            min_lr=1e-7,
-            stop_after_min=False,
-            start_steps=config['warmup_steps'],
-        )
-    hooks = [warmup,schedule]
+    hooks = []
     #cp_hook
     tf_writer = None
     csv_writer = None
@@ -348,7 +385,10 @@ def main(world_size, config):
         
     
     model.tf_writer = tf_writer
-    loss_fn = ltnp.train.loss.build_mse_loss_with_forces(rho_tradeoff = config["rho_tradeoff"],with_forces=config["regress_forces"])
+    if config["loss"] == 'L2MAE':
+        loss_fn = ltnp.train.loss.build_l2maeloss(energy_weight = config["energy_weight"],force_weight = config["force_weight"],with_forces=config["regress_forces"])
+    else:
+        loss_fn = ltnp.train.loss.build_mse_loss_with_forces(energy_weight = config["energy_weight"],force_weight = config["force_weight"],with_forces=config["regress_forces"])
     trainer = ltnp.train.ddp_trainer.DDPTrainer(model_path = config['model_path'],
                                     local_rank = rank,
                                     world_size=world_size,
@@ -366,7 +406,10 @@ def main(world_size, config):
                                     tf_writer = tf_writer, 
                                     use_wandb=config['wandb'], 
                                     early_stop=config['early_stop'], 
-                                    early_stop_patience=config['early_stop_patience'], ema_decay = config['ema_decay'])
+                                    early_stop_patience=config['early_stop_patience'], 
+                                    ema_decay = config['ema_decay'], 
+                                    args = args)
+   
    
    # Restore checkpoint
     if config['restore_run']: # used for resuming training
@@ -401,7 +444,7 @@ def find_free_port():
     
     
 if __name__ == '__main__':
-    config = parse_args()
+    config, args = parse_args()
     WORLD_SIZE = torch.cuda.device_count()
     config["batch_size"] = config["batch_size"]//WORLD_SIZE
     config["ngpus"] = WORLD_SIZE
@@ -417,4 +460,4 @@ if __name__ == '__main__':
         print('Restore run: ', config["restore_run"])
         config['model_path'] = config["restore_run"]
     if(config["local_rank"] == -1):assert(False)
-    main(WORLD_SIZE, config)
+    main(WORLD_SIZE, config, args)

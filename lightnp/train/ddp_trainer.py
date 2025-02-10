@@ -14,6 +14,9 @@ from tqdm import tqdm
 import torch.distributed as dist
 from ..utils.dist_utils import reduce_cat,reduce_mean,reduce_sum
 from .hooks.logging_metric import MeanAbsoluteError,MeanSquaredError, SpearmanCorr, R2
+from timm.scheduler import create_scheduler
+from timm.optim import create_optimizer
+from torch_scatter import scatter
 # from .loss_analysis import update_analysis
 #from torch.utils.tensorboard import SummaryWriter
 
@@ -64,6 +67,7 @@ class DDPTrainer:
         early_stop = False,
         early_stop_patience = 500,
         ema_decay = 0.9999,
+        args = None,
     ):
         self.nprocs = torch.cuda.device_count()
         self.model_path = model_path
@@ -102,7 +106,7 @@ class DDPTrainer:
             
         if self.local_rank == 0 and self.wandb:
             wandb.watch(self._model)
-        self.gradient_clip = config['gradient_clip']
+        self.gradient_clip = False
         self.fp16 = config['fp16']
         if self.fp16:
             self.scaler = torch.cuda.amp.GradScaler()
@@ -117,11 +121,10 @@ class DDPTrainer:
         # self.optimizer  = torch.optim.AdamW([p for p in self._model.parameters() if p.requires_grad],
         #                         lr = config['learning_rate'], weight_decay=5e-4)
                                 # amsgrad = config['AMSGrad'])
-        self.optimizer  = torch.optim.AdamW([p for p in self._model.parameters() if p.requires_grad],
-                                lr = config['learning_rate'], weight_decay=0)
+        self.config = config
+        self.optimizer  = create_optimizer(args, self._model)
         self.ema = ExponentialMovingAverage(self._model.parameters(), decay=ema_decay)
-
-        
+        self.scheduler, _ = create_scheduler(args, self.optimizer)
         self.properties = properties
         self.metrics_name = metrics_name
         self.metrics = []
@@ -261,10 +264,16 @@ class DDPTrainer:
             for key in batch_data.keys:
                 if isinstance(batch_data[key], torch.Tensor):
                     batch_data[key] = batch_data[key].to(self.device)
-
+                    
         result = self._model(batch_data)
-        loss = self.loss_fn(batch_data, result)
-        
+        loss = self.loss_fn(batch_data, result,self.config["mean"],self.config["std"],self.config["atomref"])
+        if self.config['atomref'] is not None:
+            ref_energy = scatter(self.config['atomref'][batch_data.atomic_numbers.long()], batch_data.batch, dim=0, reduce='sum')
+            result["energy"] = result["energy"] * self.config["std"] + self.config["mean"] + ref_energy
+        else:
+            result["energy"] = result["energy"] * self.config["std"] + self.config["mean"] 
+        if "forces" in result:
+            result["forces"] = result["forces"] * self.config["std"] 
         # metrics statistics for batch data.
         for m in self.metrics:
             m.add_batch(result,batch_data)
@@ -308,6 +317,14 @@ class DDPTrainer:
                 tqdm.write("epoch : {} , {} loss average is : {}".format(self.epoch, loader_name, eval_loss))
             return eval_loss
     
+    def predict(self, eval_batch):
+        # loader name can be ["train_loader","val_loader","test_loader"]
+        self._model.eval()
+        with self.ema.average_parameters():
+            result = self._model(eval_batch)
+
+        return result
+    
     def _get_params(self):
         return self._model.parameters() if not self._check_is_parallel() else self._model.module.parameters()
     
@@ -327,7 +344,10 @@ class DDPTrainer:
                     result, loss = self.forward_batch(train_batch)
             else:
                 result, loss = self.forward_batch(train_batch) 
-            if torch.any(torch.isnan(loss)):raise ValueError("loss is nan")
+            if torch.any(torch.isnan(loss)):
+                # zero out the loss
+                loss = torch.zeros_like(loss)
+                tqdm.write("nan loss detected, set loss to 0.")
 
             # SYNC multiple process!!!!
             torch.distributed.barrier()
@@ -387,8 +407,9 @@ class DDPTrainer:
             h.on_train_begin(self)
         
         try:
-            for _ in range(n_epochs):
+            for i in range(n_epochs):
                 # increase number of epochs by 1
+                self.scheduler.step(i)
                 self.epoch += 1
 
                 if self._stop:
@@ -501,7 +522,7 @@ class DDPTrainer:
 
 
     
-    def test(self, loader = None):
+    def test(self, loader = None, save_results = False):
         """Train the model for the given number of epochs on a specified device.
 
         Note: Depending on the `hooks`, training can stop earlier than `n_epochs`.
@@ -512,8 +533,10 @@ class DDPTrainer:
         
         if loader is None:
             loader = self.test_loader
-
-        test_loss = self.evaluate_epoch(loader,loader_name="test_loader")
+        if save_results:
+            test_loss = self.save_inference_results(loader, loader_name="test_loader")
+        else:
+            test_loss = self.evaluate_epoch(loader,loader_name="test_loader")
         log_name = ["test_loss"]
         log_val = [test_loss]
         
@@ -548,3 +571,55 @@ class DDPTrainer:
             log_name.append("{}/{}".format(name_prefix,m.name))
             if clear_metrics:
                 m.reset()
+                
+    
+    def save_inference_results(self, loader, loader_name = "test_loader"):
+        # loader name can be ["train_loader","val_loader","test_loader"]
+        self._model.eval()
+        output = []
+        with self.ema.average_parameters():
+            eval_loss = 0.0
+            if self.local_rank == 0:
+                loop = tqdm(total=len(loader)) # * loader.batch_size)
+            self.local_step = 0
+            for eval_batch in loader:
+                curr = {}
+                # append batch_size
+                self.local_step += 1
+                curr['batch'] = eval_batch.batch.cpu().numpy()
+                curr['y'] = eval_batch.energy.cpu().numpy()
+                curr['dy'] = eval_batch.forces.cpu().numpy()
+                curr['z'] = eval_batch.atomic_numbers.cpu().numpy().squeeze()
+                curr['pos'] = eval_batch.pos.cpu().numpy()
+                
+                if not self.train_force:
+                    with torch.no_grad():
+                        result, loss = self.forward_batch(eval_batch)
+                        eval_loss += loss.detach().cpu().numpy() 
+                        curr['y_pred'] = result['energy'].detach().cpu().numpy()
+                else:
+                    result, loss = self.forward_batch(eval_batch)
+                    curr['y_pred'] = result['energy'].detach().cpu().numpy()
+                    curr['pred_dy'] = result['forces'].detach().cpu().numpy()
+                    eval_loss += loss.detach().cpu().numpy()
+                    # self.optimizer.zero_grad()????
+                if self.local_rank == 0 and not self.config['amlt']:
+                    
+                    loop.set_description(f'Epoch [{self.epoch}], [{loader_name}]')
+                    loop.set_postfix(loss=loss.detach().cpu().numpy())
+                    loop.update(1)
+            
+                
+                eval_loss = torch.Tensor([eval_loss]).to(self.device)
+                dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
+                eval_loss = eval_loss.cpu().numpy().item()
+                eval_loss = eval_loss / self.world_size / len(loader)
+                
+                dist.barrier()
+                output.append(curr)    
+            if self.local_rank == 0:
+                tqdm.write("epoch : {} , {} loss average is : {}".format(self.epoch, loader_name, eval_loss))
+    # save inference results with the model name 
+        
+        torch.save(output, os.path.join(self.checkpoint_path, "inference_results.pt"))
+        return eval_loss
