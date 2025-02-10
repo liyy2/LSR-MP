@@ -1,6 +1,6 @@
 import torch
 from schnetpack.datasets import MD17
-
+from torch_scatter import scatter
 # __all__ = ["build_mse_loss", "build_mse_loss_with_forces"]
 
 
@@ -59,7 +59,7 @@ def mse_loss(pred,target):
     loss = torch.mean(diff)
     return loss,diff
 
-def build_mse_loss_with_forces(rho_tradeoff,with_forces):
+def build_mse_loss_with_forces(energy_weight,force_weight,with_forces):
     """
     Build the mean squared error loss function.
 
@@ -72,24 +72,24 @@ def build_mse_loss_with_forces(rho_tradeoff,with_forces):
 
     """
 
-    def loss_with_forces(data, result):
+    def loss_with_forces(data, result,mean,std):
         # compute the mean squared error on the energies
-        diff_energy = data["energy"]-result["energy"]
+        diff_energy = ((data["energy"]-mean)/std-result["energy"]).reshape(-1,1)
         err_sq_energy = torch.mean(diff_energy ** 2)
         # compute the mean squared error on the forces
-        diff_forces = data["forces"]-result["forces"]
+        diff_forces = data["forces"]/std-result["forces"]
         err_sq_forces = torch.mean(diff_forces ** 2)
         # print(data["energy"],result["energy"])
         # print(err_sq_energy.item(),err_sq_forces.item())
         # build the combined loss function
         consistency_loss = result["consistency_loss"] if "consistency_loss" in result else 0.0
-        err_sq = rho_tradeoff*err_sq_energy + (1-rho_tradeoff)*err_sq_forces + 0.01*consistency_loss
+        err_sq = energy_weight*err_sq_energy + force_weight*err_sq_forces + 0.01*consistency_loss
 
         return err_sq
     
-    def loss_for_energy(data, result):
+    def loss_for_energy(data, result,mean,std):
         # compute the mean squared error on the energies
-        diff_energy = data["energy"]-result["energy"]
+        diff_energy = ((data["energy"]-mean)/std-result["energy"]).reshape(-1,1)
         err_sq_energy = torch.mean(diff_energy ** 2)
 
         return err_sq_energy
@@ -98,3 +98,35 @@ def build_mse_loss_with_forces(rho_tradeoff,with_forces):
     else:
         return loss_for_energy
 
+
+
+def build_l2maeloss(energy_weight,force_weight,with_forces):
+    def loss_with_forces(data, result,mean,std, atom_ref=None):
+        # should also minus atom_ref
+        if atom_ref is not None:
+            ref_energy = scatter(atom_ref[data.atomic_numbers.long()], data.batch, dim=0, reduce='sum')
+            diff_energy = ((data["energy"] - mean - ref_energy)/std-result["energy"]).reshape(-1,1)
+        else:
+            diff_energy = ((data["energy"]-mean)/std-result["energy"]).reshape(-1,1)
+        diff_energy = torch.norm(diff_energy, p=2, dim=-1)
+        diff_energy = torch.mean(diff_energy)
+        
+        diff_forces = data["forces"]/std-result["forces"]
+        diff_forces = torch.norm(diff_forces, p=2, dim=-1)
+        diff_forces = torch.mean(diff_forces)
+        # print(data["energy"],result["energy"])
+        # print(err_sq_energy.item(),err_sq_forces.item())
+        # build the combined loss function
+        return energy_weight*diff_energy + force_weight*diff_forces 
+    
+    def loss_for_energy(data, result,mean,std, atom_ref=None):
+        # compute the mean squared error on the energies
+        diff_energy = ((data["energy"]-mean)/std-result["energy"]).reshape(-1,1)
+        diff_energy = torch.norm(diff_energy, p=2, dim=-1)
+        diff_energy = torch.mean(diff_energy)
+        return diff_energy
+    
+    if with_forces:
+        return loss_with_forces
+    else:
+        return loss_for_energy
