@@ -100,7 +100,7 @@ def parse_args(jupyter=False):
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--debug', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=0) ## gpu device count
-    parser.add_argument('--local_rank', type=int, default=0) ## gpu device countpu device count
+    parser.add_argument('--local_rank', '--local-rank', type=int, default=0) ## gpu device countpu device count
     parser.add_argument('--master_port', type=str, default="0000") ## gpu device countpu device count
     ######################## Optimizer ########################
     parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
@@ -409,14 +409,13 @@ def main(world_size, config, args):
         tf_writer = SummaryWriter(log_dir=config['model_path'], flush_secs=1) 
         tf_writer.add_text('config', json.dumps(config, indent=4, sort_keys=True))
         csv_writer = Logger_Lin(config['model_path'], flush_secs=60) if rank == 0 else None
-        if config['wandb']:
+        if config['wandb'] and config['local_rank'] == 0:
             wandb.login(key=config['api_key']) if config['api_key'] else None
             wandb.init(project="LightNP", dir = config['model_path'], group = config['group'], 
                        name = config['name'], 
                        tags = config['tags'], 
                        notes = config['notes'])
             wandb.config.update(config)
-            config['model_path'] = wandb.run.dir
 
         
     
@@ -490,7 +489,7 @@ if __name__ == '__main__':
         config['model_path'] = os.path.join(config['model_path'], f"{config['molecule']}_{config['dataset']}/{timestamp}_{config['model']}") 
         if config["local_rank"] ==0:
             if not os.path.exists(config['model_path']):
-                os.makedirs(config['model_path'])
+                os.makedirs(config['model_path'], exist_ok=True)
             prepare_dataset(config)
     else:
         print('Restore run: ', config["restore_run"])
