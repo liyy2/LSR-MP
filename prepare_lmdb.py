@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 from torch_geometric.data import Data
 from torch_geometric.transforms.radius_graph import RadiusGraph
-from lightnp.LSTM.utils import build_neighborhood_n_interaction, build_label, build_grouping_graph,build_label_two
+from lightnp.LSRM.utils import build_neighborhood_n_interaction, build_label, build_grouping_graph,build_label_two
 from rdkit_label_builder import rdkit_label_builder
 import argparse
 
@@ -184,7 +184,7 @@ def parse_args(jupyter = False):
     parser.add_argument('--broadcast_radius', type=float, default=3.0)
     parser.add_argument('--out_path', type=str, default=None)
     parser.add_argument('--dataset_identifier', type=str, default='')
-    parser.add_argument('--num_workers', type=int, default=32)
+    parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--min_nodes_foreachGroup', type=int, default=4)
     parser.add_argument('--ignore_errors', type=bool, default=True)
     parser.add_argument('--group_builder', type=str, default='kmeans', choices=['rdkit', 'kmeans','spectral','spectral_two'], help='which group builder to use')
@@ -226,7 +226,11 @@ def parse_args(jupyter = False):
 
 
 def write_images_to_lmdb(mp_arg):
-    db_path, samples, idx, pid, dataset, energy_mean, energy_std, config = mp_arg
+    db_path, samples, idx, pid, mol, energy_mean, energy_std, config = mp_arg
+    
+    # Recreate dataset within worker to avoid pickling issues
+    dataset = MD22(os.path.join(datapath, f"{dataset_name}_{mol}.db"),
+            molecule = mol, load_only =["energy","forces"])
     
     if os.path.exists(db_path):
         os.remove(db_path)
@@ -324,7 +328,7 @@ def main(mol,config):
     global counter
     counter = Value('i', 0)
     print(f"Processing {mol}...")
-    dataset = eval(dataset_name)(os.path.join(datapath, f"{dataset_name}_{mol}.db"),
+    dataset = MD22(os.path.join(datapath, f"{dataset_name}_{mol}.db"),
             molecule = mol, load_only =["energy","forces"])
     # normalized_tag = "_normalized" if subtract_mean else ""
     rmMean = '_rmMean_' if subtract_mean else '' 
@@ -360,7 +364,7 @@ def main(mol,config):
             chunked_txt_files[i],
             idx[i],
             i,
-            dataset,
+            mol,
             energy_mean,
             energy_std,
             config

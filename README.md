@@ -94,22 +94,21 @@ Currently Supported Models:
 ### Run LSRM on a Single GPU 
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 run_ddp.py \
---datapath [YOUR_DATA_PATH] \
---model=Visnorm_shared_LSRMNorm2_2branchSerial \
---molecule AT_AT_CG_CG \
---dataset=[DATASET_ID]  \
---group_builder rdkit \
---num_interactions=6  --long_num_layers=2 \
---learning_rate=0.0004 --rho_tradeoff 0.001 \
---dropout=0 --hidden_channels 128 \
---gradient_clip \
---calculate_meanstd --otfcutoff 4 \
---short_cutoff_upper 4 --long_cutoff_lower 0 --long_cutoff_upper 9 \
---early_stop --early_stop_patience 500 \
---no_broadcast  --batch_size 16 \
---ema_decay 0.999 --dropout 0.1 \
---wandb --api_key [YOUR API KEY IN WANDB]
+CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=1230 \
+  run_ddp.py \
+    --datapath ./ \
+    --model=Visnorm_shared_LSRMNorm2_2branchSerial \
+    --molecule AT_AT_CG_CG \
+    --dataset=my_dataset \
+    --group_builder rdkit \
+    --num_interactions=6 --long_num_layers=2 \
+    --lr=0.0004 --rho_criteria=0.001 \
+    --dropout=0 --hidden_channels=128 \
+    --calculate_meanstd --otfcutoff=4 \
+    --short_cutoff_upper=4 --long_cutoff_lower=0 --long_cutoff_upper=9 \
+    --early_stop --early_stop_patience=500 \
+    --no_broadcast --batch_size=16 \
+    --ema_decay=0.999 --dropout=0.1
 ```
 
 ### Run LSRM using Distributed Data Parallel Training
