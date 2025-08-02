@@ -430,8 +430,7 @@ CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --m
 
 1. **CUDA Out of Memory**: Reduce `--batch_size` or use fewer `--hidden_channels`
 2. **Preprocessing Delays**: Large molecular systems may require extended preprocessing time
-3. **Port Conflicts**: Change `--master_port` if the default port is occupied
-4. **Missing Dependencies**: Ensure all packages are installed via `build_env.sh`
+3. **Missing Dependencies**: Ensure all packages are installed via `build_env.sh`
 
 ### Performance Tips:
 
