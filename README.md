@@ -134,7 +134,7 @@ chmod +x build_env.sh
 Train LSR-MP on a single GPU:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=1230 \
+CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 \
   run_ddp.py \
     --datapath ./ \
     --model=Visnorm_shared_LSRMNorm2_2branchSerial \
@@ -155,7 +155,7 @@ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=1230 \
 For Equiformer-LSRM model, use:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=1230 \
+CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 \
   run_ddp.py \
     --datapath ./ \
     --model=dot_product_attention_transformer_exp_l2_md17_lsrmserial \
@@ -176,7 +176,7 @@ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=1230 \
 For E2Former model (state-of-the-art E(3)-equivariant transformer), use:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=1230 \
+CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 \
   run_ddp.py \
     --datapath ./ \
     --model=E2Former \
@@ -215,7 +215,7 @@ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=1230 \
 Train using Distributed Data Parallel across multiple GPUs:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node=4 --master_port=1230 \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port=1230 \
   run_ddp.py \
     --datapath ./ \
     --model=Visnorm_shared_LSRMNorm2_2branchSerial \
