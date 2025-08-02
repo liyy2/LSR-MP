@@ -80,7 +80,7 @@ def parse_args(jupyter=False):
     # parser.add_argument('--AMSGrad', default=False, action='store_true')
     # parser.add_argument('--warmup_steps', type = int, default = 1000)
     parser.add_argument('--test_interval', type= int, default = 600)
-    parser.add_argument('--loss', type=str, default="MSE", choices=["MSE", "L2MAE"])
+    parser.add_argument('--loss', type=str, default="L2MAE", choices=["MSE", "L2MAE"])
     parser.add_argument('--lr_std',  type=int, default=0,
                         help='whether to use learning rate diveded by std (default: 0)')
     
@@ -98,7 +98,7 @@ def parse_args(jupyter=False):
     parser.add_argument('--train_prop', type=float, default=0.95)
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--debug', action='store_true', default=False)
-    parser.add_argument('--num_workers', type=int, default=24) ## gpu device count
+    parser.add_argument('--num_workers', type=int, default=0) ## gpu device count
     parser.add_argument('--local_rank', type=int, default=0) ## gpu device countpu device count
     parser.add_argument('--master_port', type=str, default="0000") ## gpu device countpu device count
     ######################## Optimizer ########################
@@ -259,12 +259,23 @@ def get_stats(config, unit, train_set):
                                   shuffle=False, num_workers = config['num_workers'])
         atomref = None #get_atomref(train_set, "energy", data_len = None, atomic_number_max = 60)
         mean, std = get_statistics(train_set, train_loader, 'energy', False, atomref=None) #prop_divide_by_atoms: False. As in visnet setting, its energy mean and std is not divided by atoms.
+        
+        # DOUBLE NORMALIZATION FIX:
+        # Previously, both model and trainer applied normalization, causing energy prediction errors.
+        # Now we separate normalization responsibilities:
+        
+        # 1. REAL mean/std: Used by trainer for final denormalization (stored in config)
+        real_mean, real_std = mean, std
+        
+        # 2. MODEL mean/std: Set to 0,1 so model outputs raw predictions without internal normalization
+        # The model's OutputNet will apply: output * model_std + model_mean = output * 1 + 0 = output
+        model_mean, model_std = torch.tensor(0.0), torch.tensor(1.0)
         config["meanstd_level"] = "molecule_level"
-        print(config["local_rank"], mean, std)
-        print(atomref,mean,std)
+        print(config["local_rank"], "Real mean/std:", real_mean, real_std, "Model mean/std:", model_mean, model_std)
+        print(atomref, real_mean, real_std)
     else:
         assert(False)
-    return mean, std, atomref, config
+    return real_mean, real_std, model_mean, model_std, atomref, config
 
 def get_dataset(config):
     if config['molecule'] in [
@@ -354,15 +365,19 @@ def main(world_size, config, args):
     train_loader = DataLoader(train_set, batch_size=config['batch_size'], collate_fn = collate_fn(unit = unit, with_force = regress_forces), shuffle=False,num_workers = config['num_workers'], sampler=train_sampler)
     val_loader = DataLoader(val_set, batch_size=config['batch_size']//2, collate_fn = collate_fn(unit = unit, with_force = regress_forces), shuffle=False,num_workers = config['num_workers'], sampler=valid_sampler)
     test_loader = DataLoader(test_set, batch_size=config['batch_size']//2, collate_fn = collate_fn(unit = unit, with_force = regress_forces), shuffle=False,num_workers = config['num_workers'], sampler=test_sampler)
-    mean, std, atomref, config = get_stats(config, unit, train_set)
-    # if config["lr_std"]:
-    config["mean"] = mean.item()
-    config["std"] = std.item()
+    real_mean, real_std, model_mean, model_std, atomref, config = get_stats(config, unit, train_set)
+    
+    # NORMALIZATION FLOW:
+    # 1. Store REAL mean/std in config - trainer will use these for final denormalization
+    config["mean"] = real_mean.item()  # Used in ddp_trainer.py: result["energy"] = result["energy"] * std + mean
+    config["std"] = real_std.item()
     # config["lr"] = config["lr"]/std.item()
     # args.lr = args.lr/std.item()
     config['atomref'] = atomref.cuda() if atomref is not None else None
         
-    model = get_model(config,mean,std,regress_forces,atomref)
+    # 2. Initialize model with MODEL mean=0, std=1 for raw predictions (no internal normalization)
+    # Model's OutputNet will do: output * 1 + 0 = output (identity transform)
+    model = get_model(config,model_mean,model_std,regress_forces,atomref)
     properties = ['energy', 'forces'] if regress_forces else ['energy'] # diff_U0_group, group_energy
 
     hooks = []
