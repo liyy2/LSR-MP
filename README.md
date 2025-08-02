@@ -1,97 +1,119 @@
 
 # [ICLR 2024] Long-Short-Range Message-Passing
 
+A comprehensive implementation of Long-Short-Range Message-Passing and state-of-the-art models for molecular dynamics simulation, optimized for Multi-GPU training.
 
-* This repository is a comprehensive code base that implements Long-Short-Range Message-Passing as well as a spectrum of state-of-the-art models for molecular dynamics simulation
+## Table of Contents
 
-* This code base is designed and optimized for Multi-GPU training
+- [Overview](#overview)
+- [LSR-MP Illustration](#lsr-mp-illustration)
+- [BRICS Algorithm](#brics-algorithm)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Single GPU Training](#single-gpu-training)
+  - [Multi-GPU Training](#multi-gpu-training)
+  - [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
 
-  
+## Overview
 
-## Illustration of LSR-MP
+This repository provides:
+- Implementation of Long-Short-Range Message-Passing (LSR-MP)
+- Multiple state-of-the-art models for molecular dynamics simulation
+- Multi-GPU training optimization
+- Support for various fragmentation methods
 
-![image-20230319125927129](./plots/LSR-MP.png)
+**Note:** Preprocessing steps may take longer than expected, especially for larger molecular systems. Please be patient during the initial data preparation phase.
 
+## LSR-MP Illustration
 
+![LSR-MP architecture diagram showing long-short range message passing between molecular fragments](./plots/LSR-MP.png)
 
-## BRICS Algorithm Introduction
+## BRICS Algorithm
 
-The Breaking of Retrosynthetically Interesting Chemical Substructures (BRICS) method is one of the most widely employed strategies in the communities of quantum chemistry, chemical retrosynthesis, and drug discovery. We summarize the key points of BRICS as follows:
+The Breaking of Retrosynthetically Interesting Chemical Substructures (BRICS) method is widely used in quantum chemistry, chemical retrosynthesis, and drug discovery.
 
-   * A compound is first dissected into multiple substructures at predefined 16 types of bonds that are selected by organic chemists. In addition, BRICS also takes into account the chemical environment near the bonds, e.g. the types of atoms, to make sure that the size of each fragment is reasonable and the characteristics of the compounds are  kept as much as possible.
-   * BRICS method then applies substructure filters to remove extremely small fragments (for example single atoms), duplicate fragments, and fragments with overlaps.
-   *  Finally, BRICS concludes the fragmentation procedure by adding supplementary atoms (mostly hydrogen atoms) to the fragments at the bond-breaking points and makes them chemically stable. 
+### Key Features:
 
-We included a visual representation and pseudocode of the BRICS algorithm as follows:
+1. **Bond Dissection**: Compounds are dissected at 16 predefined bond types selected by organic chemists
+2. **Environmental Awareness**: Considers chemical environment (atom types) to maintain reasonable fragment sizes
+3. **Filtering**: Removes extremely small fragments, duplicates, and overlapping structures
+4. **Stabilization**: Adds supplementary atoms (mainly hydrogen) at bond-breaking points for chemical stability
 
-<img src="./plots/supplementary-fig.png"  />
+### Visual Representation:
 
+![BRICS algorithm supplementary figure showing molecular fragmentation process](./plots/supplementary-fig.png)
 
+![BRICS algorithm pseudocode and workflow diagram](./plots/BRICS_algorithm.png)
 
-<img src="./plots/BRICS_algorithm.png"  />
+## Prerequisites
 
+Before installation, ensure you have:
+- Python 3.7+
+- CUDA-compatible GPU(s) for training
+- Conda or Miniconda installed
+- Git for cloning the repository
 
+## Installation
 
-## Install Pacakges 
+### Step 1: Create Environment
 
-* Main Pacakges used in this repo:
-```
-  torch
-  torch-geometric
-  torch-scatter
-  ase
-  rdkit
-```
-
-* Make a new conda environments:
-
+Create a new conda environment:
 ```bash
-conda create -n LSR-MP
+conda create -n LSR-MP python=3.8
 ```
 
-
-* Activate the new conda environments:
+### Step 2: Activate Environment
 
 ```bash
 conda activate LSR-MP
 ```
 
-* Installation using pip:
+### Step 3: Install Dependencies
 
+The main packages required:
+- `torch` - PyTorch framework
+- `torch-geometric` - Graph neural network library
+- `torch-scatter` - Scatter operations for PyTorch
+- `ase` - Atomic Simulation Environment
+- `rdkit` - Chemical informatics toolkit
+
+Install using the provided script:
 ```bash
-chmod +X build_env.sh
-./buil_env.sh
+chmod +x build_env.sh
+./build_env.sh
 ```
 
 
 
-## Run Model
+## Usage
 
+### Supported Components
 
-For fragments assignments, supported methods include: 
-* BRICS [rdkit], 
-* K-Means Clustering [k-means] 
-* Distance-based Spectral Clustering [spectral]
+#### Fragment Assignment Methods:
+- **BRICS** (`rdkit`) - Chemical substructure-based fragmentation
+- **K-Means Clustering** (`k-means`) - Distance-based clustering
+- **Spectral Clustering** (`spectral`) - Graph-based clustering
 
-Supported Molecules:
-* Ac_Ala3_NHMe 
-* DHA 
-* stachyose 
-* AT_AT
-* AT_AT_CG_CG 
-* double_walled_nanotube 
-* buckyball_catcher 
+#### Supported Molecules:
+- `Ac_Ala3_NHMe` - Alanine tripeptide
+- `DHA` - Docosahexaenoic acid
+- `stachyose` - Tetrasaccharide
+- `AT_AT` - Adenine-thymine base pairs
+- `AT_AT_CG_CG` - Mixed DNA base pairs
+- `double_walled_nanotube` - Carbon nanotube structure
+- `buckyball_catcher` - Fullerene host-guest complex
 
-Currently Supported Models:
+#### Available Models:
+- **VisNet-LSRM** (`Visnorm_shared_LSRMNorm2_2branchSerial`) - Long-Short Range Message Passing
+- **Equivariant Transformer** (`TorchMD_ET`) - Transformer-based approach
+- **PaiNN** - Polarizable Atom Interaction Neural Network
+- **Equiformer-LSRM** (`dot_product_attention_transformer_exp_l2_md17_lsrmserial`) - E(3)-equivariant transformer with LSRM
 
-* Visnorm_shared_LSRMNorm2_2branchSerial (VisNet-LSRM)
-* TorchMD_ET (Equivariant Transformer)
-* PaiNN
+### Single GPU Training
 
-
-
-
-### Run LSRM on a Single GPU 
+Train LSR-MP on a single GPU:
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=1230 \
@@ -108,51 +130,102 @@ CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=1230 \
     --short_cutoff_upper=4 --long_cutoff_lower=0 --long_cutoff_upper=9 \
     --early_stop --early_stop_patience=500 \
     --no_broadcast --batch_size=16 \
-    --ema_decay=0.999 --dropout=0.1
+    --ema_decay=0.999 --dropout=0.1 \
+    --wandb --api_key [YOUR_WANDB_API_KEY]
 ```
 
-### Run LSRM using Distributed Data Parallel Training
+For Equiformer-LSRM model, use:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --master_port=1230 run_ddp.py \
---datapath [YOUR_DATA_PATH] \
---model=Visnorm_shared_LSRMNorm2_2branchSerial \
---molecule AT_AT_CG_CG  \
---dataset=[DATASET_NAME]  \
---group_builder rdkit \
---num_interactions=6  --long_num_layers=2 \
---learning_rate=0.0004 --rho_tradeoff 0.001 \
---dropout=0 --hidden_channels 128 \
---gradient_clip \
---calculate_meanstd --otfcutoff 4 \
---short_cutoff_upper 4 --long_cutoff_lower 0 --long_cutoff_upper 9 \
---early_stop --early_stop_patience 500 \
---no_broadcast  --batch_size 16 \
---ema_decay 0.999 --dropout 0.1 \
---wandb --api_key [YOUR API KEY IN WANDB]
+CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=1230 \
+  run_ddp.py \
+    --datapath ./ \
+    --model=dot_product_attention_transformer_exp_l2_md17_lsrmserial \
+    --molecule AT_AT_CG_CG \
+    --dataset=my_dataset \
+    --group_builder rdkit \
+    --num_interactions=6 --long_num_layers=2 \
+    --lr=0.0004 --rho_criteria=0.001 \
+    --dropout=0 --hidden_channels=128 \
+    --calculate_meanstd --otfcutoff=4 \
+    --short_cutoff_upper=4 --long_cutoff_lower=0 --long_cutoff_upper=9 \
+    --early_stop --early_stop_patience=500 \
+    --no_broadcast --batch_size=16 \
+    --ema_decay=0.999 --dropout=0.1 \
+    --wandb --api_key [YOUR_WANDB_API_KEY]
 ```
 
-Notes:
-- The above setting is a good start for a fair performance on MD22
-- --nproc_per_node=4 must equal to the number of CUDA_VISIBLE_DEVICES
-- --otfcutoff must equal to short_cutoff_upper, this is the radius for short-range graph
-- --wandb toggle on wandb, just input your api key
-- You can specify a unique id for each dataset in [DATASET_ID]. This is mainly used when comparing different fragmentation scheme under the same molecules.
+#### Key Parameters:
+- `--datapath`: Path to your dataset directory
+- `--model`: Model architecture to use
+- `--molecule`: Target molecule system
+- `--group_builder`: Fragmentation method (rdkit, k-means, spectral)
+- `--num_interactions`: Number of interaction layers
+- `--lr`: Learning rate
+- `--hidden_channels`: Hidden layer dimensions
+- `--batch_size`: Training batch size
 
-### Test using a single gpu
+### Multi-GPU Training
+
+Train using Distributed Data Parallel across multiple GPUs:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node=4 --master_port=1230 \
+  run_ddp.py \
+    --datapath ./ \
+    --model=Visnorm_shared_LSRMNorm2_2branchSerial \
+    --molecule AT_AT_CG_CG \
+    --dataset=my_dataset \
+    --group_builder rdkit \
+    --num_interactions=6 --long_num_layers=2 \
+    --lr=0.0004 --rho_criteria=0.001 \
+    --dropout=0 --hidden_channels=128 \
+    --calculate_meanstd --otfcutoff=4 \
+    --short_cutoff_upper=4 --long_cutoff_lower=0 --long_cutoff_upper=9 \
+    --early_stop --early_stop_patience=500 \
+    --no_broadcast --batch_size=16 \
+    --ema_decay=0.999 --dropout=0.1 \
+    --wandb --api_key [YOUR_WANDB_API_KEY]
+```
+
+#### Important Notes:
+- `--nproc_per_node` must equal the number of GPUs in `CUDA_VISIBLE_DEVICES`
+- `--otfcutoff` must equal `--short_cutoff_upper` (defines short-range graph radius)
+- Use `--wandb` with your API key for experiment tracking
+- Recommended settings provide good MD22 benchmark performance
+
+### Testing
+
+Evaluate a trained model:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port=1230 run_ddp.py \
---datapath [YOUR_DATA_PATH] \
---model=Visnorm_shared_LSRMNorm2_2branchSerial \
---molecule AT_AT_CG_CG  \
---dataset=[DATASET_NAME]  \
---test --restore_run [PATH_TO_TRAINED_MODEL] \
---wandb --api_key [YOUR API KEY IN WANDB]
+  --datapath [YOUR_DATA_PATH] \
+  --model=Visnorm_shared_LSRMNorm2_2branchSerial \
+  --molecule AT_AT_CG_CG \
+  --dataset=[DATASET_NAME] \
+  --test --restore_run [PATH_TO_TRAINED_MODEL] \
+  --wandb --api_key [YOUR_WANDB_API_KEY]
 ```
-The evaluation metrics includes: 
-- MAE for force
-- MAE for energy
+
+#### Evaluation Metrics:
+- **Force MAE** - Mean absolute error for atomic forces
+- **Energy MAE** - Mean absolute error for system energy
+
+## Troubleshooting
+
+### Common Issues:
+
+1. **CUDA Out of Memory**: Reduce `--batch_size` or use fewer `--hidden_channels`
+2. **Preprocessing Delays**: Large molecular systems may require extended preprocessing time
+3. **Port Conflicts**: Change `--master_port` if the default port is occupied
+4. **Missing Dependencies**: Ensure all packages are installed via `build_env.sh`
+
+### Performance Tips:
+
+- Use multiple GPUs for faster training on large datasets
+- Adjust cutoff parameters based on your molecular system size
+- Monitor training with wandb for optimal hyperparameter tuning
 
 
 
