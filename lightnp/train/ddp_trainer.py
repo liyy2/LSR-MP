@@ -261,7 +261,7 @@ class DDPTrainer:
                 batch_data[key] = batch_data[key].to(self.device)
         else:
             # Exception for PyG data object
-            for key in batch_data.keys:
+            for key in batch_data.keys():
                 if isinstance(batch_data[key], torch.Tensor):
                     batch_data[key] = batch_data[key].to(self.device)
                     
