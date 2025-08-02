@@ -267,6 +267,8 @@ class DDPTrainer:
                     
         result = self._model(batch_data)
         loss = self.loss_fn(batch_data, result,self.config["mean"],self.config["std"],self.config["atomref"])
+        # DENORMALIZATION: Convert model's raw predictions back to real energy scale
+        # Model outputs raw predictions (mean=0, std=1), trainer applies real mean/std
         if self.config['atomref'] is not None:
             ref_energy = scatter(self.config['atomref'][batch_data.atomic_numbers.long()], batch_data.batch, dim=0, reduce='sum')
             result["energy"] = result["energy"] * self.config["std"] + self.config["mean"] + ref_energy

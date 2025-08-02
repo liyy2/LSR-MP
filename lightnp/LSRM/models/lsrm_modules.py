@@ -10,7 +10,6 @@ from .output_net import OutputNet
 from ..utils import conditional_grad
 
 
-
 class Node_Edge_Fea_Init(nn.Module):
     def __init__(self,
                  max_z = 100,

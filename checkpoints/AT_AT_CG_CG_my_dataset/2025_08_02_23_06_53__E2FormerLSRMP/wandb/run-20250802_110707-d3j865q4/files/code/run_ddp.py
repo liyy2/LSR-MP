@@ -15,7 +15,7 @@ from lightnp.LSRM.data import collate_fn, LmdbDataset
 from torch.utils.data import DataLoader
 from lightnp.LSRM.models.torchmdnet.models.model import create_model
 from lightnp.LSRM.models.lsrm_modules import Visnorm_shared_LSRMNorm2_2branchSerial
-from lightnp.LSRM.models.e2former_lsrmp import E2Former
+from lightnp.LSRM.models.e2former_lsrmp import E2FormerLSRMP
 import lightnp as ltnp
 from lightnp.utils.ltnp_utils import Logger_Lin
 import argparse
@@ -204,9 +204,9 @@ def amlt_config(config):
 def get_model(config,mean,std,regress_forces,atomref):
     if config['model'] in ["TorchMD_Norm", "TorchMD_ET", "PaiNN"]:
         model = create_model(config, mean=mean, std=std, atomref=atomref)
-    elif config["model"] == "E2Former":
-        # E2Former vanilla model with consistent force block approach
-        model = E2Former(
+    elif config["model"] == "E2FormerLSRMP":
+        # E2Former LSR-MP adaptation with consistent force block approach
+        model = E2FormerLSRMP(
             regress_forces=regress_forces,
             hidden_channels=config["hidden_channels"],
             num_layers=config['num_interactions'],

@@ -55,6 +55,23 @@ Before installation, ensure you have:
 - Conda or Miniconda installed
 - Git for cloning the repository
 
+### Additional Requirements for E2Former Model
+
+If you plan to use the E2Former model, you must first clone the official E2Former repository:
+
+```bash
+git clone https://github.com/2023huang6385/E2Former.git
+```
+
+Then modify the path in `lightnp/LSRM/models/e2former_lsrmp.py` (line 14):
+
+```python
+# Change this line to point to your E2Former installation
+sys.path.append('/path/to/your/E2Former')
+```
+
+Replace `/path/to/your/E2Former` with the actual path where you cloned the E2Former repository.
+
 ## Installation
 
 ### Step 1: Create Environment
@@ -110,6 +127,7 @@ chmod +x build_env.sh
 - **Equivariant Transformer** (`TorchMD_ET`) - Transformer-based approach
 - **PaiNN** - Polarizable Atom Interaction Neural Network
 - **Equiformer-LSRM** (`dot_product_attention_transformer_exp_l2_md17_lsrmserial`) - E(3)-equivariant transformer with LSRM
+- **E2Former** (`E2Former`) - State-of-the-art E(3)-equivariant transformer with direct force prediction
 
 ### Single GPU Training
 
@@ -154,6 +172,33 @@ CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=1230 \
     --ema_decay=0.999 --dropout=0.1 \
     --wandb --api_key [YOUR_WANDB_API_KEY]
 ```
+
+For E2Former model (state-of-the-art E(3)-equivariant transformer), use:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=1230 \
+  run_ddp.py \
+    --datapath ./ \
+    --model=E2Former \
+    --molecule AT_AT_CG_CG \
+    --dataset=my_dataset \
+    --group_builder rdkit \
+    --num_interactions=6 \
+    --lr=0.0004 --rho_criteria=0.001 \
+    --dropout=0 --hidden_channels=128 \
+    --calculate_meanstd --otfcutoff=4 \
+    --short_cutoff_upper=4 \
+    --early_stop --early_stop_patience=500 \
+    --no_broadcast --batch_size=16 \
+    --ema_decay=0.999 --dropout=0.1 \
+    --wandb --api_key [YOUR_WANDB_API_KEY]
+```
+
+**Note**: E2Former uses direct force prediction via eSCN force blocks and does not utilize long-short range message passing. The model is based on the vanilla E2Former architecture without LSR-MP extensions.
+
+**Important**: Before using E2Former, ensure you have:
+1. Cloned the official E2Former repository: `git clone https://github.com/2023huang6385/E2Former.git`
+2. Updated the path in `lightnp/LSRM/models/e2former_lsrmp.py` line 14 to point to your E2Former installation
 
 #### Key Parameters:
 - `--datapath`: Path to your dataset directory
