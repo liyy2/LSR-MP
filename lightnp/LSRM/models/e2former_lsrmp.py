@@ -11,7 +11,7 @@ from torch_geometric.data import Data
 from torch_geometric.utils import remove_self_loops
 
 # Add E2Former repository to path
-sys.path.append('/nfs/roberts/project/pi_mg269/yl2428/E2Former')
+sys.path.append('/path/to/e2former')
 
 # Import E2Former components
 from src.E2Former import E2FormerBackbone, eSCN_ForceBlockV2
